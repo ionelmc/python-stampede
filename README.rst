@@ -56,3 +56,9 @@ Requirements
 :OS: Linux
 :Runtime: Python 2.6, 2.7, 3.2, 3.3 and PyPy
 :Packages: python-signalfd
+
+
+.. image:: https://d2weczhvl823v0.cloudfront.net/ionelmc/python-stampede/trend.png
+   :alt: Bitdeli badge
+   :target: https://bitdeli.com/free
+
