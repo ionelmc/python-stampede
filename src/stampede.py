@@ -199,9 +199,9 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                         logger.debug("Queues => %s workspaces", qlen)
                         for i, wq in enumerate(self.queues.values()):
                             if i + 1 == qlen:
-                                logger.debug(" └─ %s", wq)
+                                logger.debug(" \_ %s", wq)
                             else:
-                                logger.debug(" ├─ %s", wq)
+                                logger.debug(" |_ %s", wq)
 
                         current_fds = [child_fd, requests_sock]
                         current_fds.extend(self.clients.keys())
