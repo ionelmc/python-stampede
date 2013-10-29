@@ -9,6 +9,7 @@ from contextlib import closing
 from process_tests import TestProcess, ProcessTestCase, setup_coverage
 
 UDS_PATH = '/tmp/stampede-tests.sock'
+TIMEOUT = int(os.getenv('REDIS_LOCK_TEST_TIMEOUT', 5))
 PY3 = sys.version_info[0] == 3
 
 class StampedeDaemonTests(ProcessTestCase):
@@ -20,7 +21,7 @@ class StampedeDaemonTests(ProcessTestCase):
     def test_simple(self):
         with TestProcess(sys.executable, __file__, 'daemon', 'test_simple') as proc:
             with self.dump_on_error(proc.read):
-                self.wait_for_strings(proc.read, 1, 'Queues =>')
+                self.wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
                 with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                     sock.settimeout(1)
                     sock.connect(UDS_PATH)
@@ -33,7 +34,7 @@ class StampedeDaemonTests(ProcessTestCase):
                     fh.write(b"-second\n")
                     line = fh.readline()
                     self.assertTrue(line.startswith(b'done (job:'), line)
-                    self.wait_for_strings(proc.read, 1,
+                    self.wait_for_strings(proc.read, TIMEOUT,
                        '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                        'JOB first-second EXECUTED',
                        'completed. Passing back results to',
@@ -43,7 +44,7 @@ class StampedeDaemonTests(ProcessTestCase):
     def test_incomplete_request(self):
         with TestProcess(sys.executable, __file__, 'daemon', 'test_simple') as proc:
             with self.dump_on_error(proc.read):
-                self.wait_for_strings(proc.read, 1, 'Queues =>')
+                self.wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
                 with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                     sock.settimeout(2)
                     sock.connect(UDS_PATH)
@@ -55,14 +56,14 @@ class StampedeDaemonTests(ProcessTestCase):
                         fh.write(b"first")
                         line = fh.readline()
                         self.assertEqual(line, b'')
-                        self.wait_for_strings(proc.read, 1,
+                        self.wait_for_strings(proc.read, TIMEOUT,
                            'Failed to read request from client %s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                         )
 
     def test_queue_collapse(self):
         with TestProcess(sys.executable, __file__, 'daemon', 'test_queue_collapse') as proc:
             with self.dump_on_error(proc.read):
-                self.wait_for_strings(proc.read, 1, 'Queues =>')
+                self.wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
                 clients = []
                 for _ in range(5):
                     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -80,7 +81,7 @@ class StampedeDaemonTests(ProcessTestCase):
                     delta = time.time() - t1
                     if delta > 1:
                         self.fail('Jobs took too much time (%0.2f sec)' % delta)
-                    self.wait_for_strings(proc.read, 1,
+                    self.wait_for_strings(proc.read, TIMEOUT,
                        'test_queue_collapse OK',
                        '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                     )
@@ -93,7 +94,7 @@ class StampedeDaemonTests(ProcessTestCase):
     def test_timeout(self):
         with TestProcess(sys.executable, __file__, 'daemon', 'test_timeout') as proc:
             with self.dump_on_error(proc.read):
-                self.wait_for_strings(proc.read, 1, 'Queues =>')
+                self.wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
                 with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                     sock.settimeout(3)
                     sock.connect(UDS_PATH)
@@ -104,7 +105,7 @@ class StampedeDaemonTests(ProcessTestCase):
                     fh.write(b"test_timeout\n")
                     line = fh.readline()
                     self.assertTrue(line.startswith(b'fail:14 (job:'), line)
-                    self.wait_for_strings(proc.read, 1,
+                    self.wait_for_strings(proc.read, TIMEOUT,
                         '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                         'test_timeout STARTED',
                         'completed. Passing back results to',
@@ -114,7 +115,7 @@ class StampedeDaemonTests(ProcessTestCase):
     def test_bad_client(self):
         with TestProcess(sys.executable, __file__, 'daemon', 'test_simple') as proc:
             with self.dump_on_error(proc.read):
-                self.wait_for_strings(proc.read, 1, 'Queues =>')
+                self.wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
                 with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                     sock.settimeout(1)
                     sock.connect(UDS_PATH)
@@ -127,7 +128,7 @@ class StampedeDaemonTests(ProcessTestCase):
                     sock.close()
                     time.sleep(0.2)
                     self.assertTrue(proc.is_alive)
-                    self.wait_for_strings(proc.read, 1,
+                    self.wait_for_strings(proc.read, TIMEOUT,
                        '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                        'JOB first-second EXECUTED',
                        'completed. Passing back results to',
@@ -177,4 +178,3 @@ if __name__ == '__main__':
         logging.info("DONE.")
     else:
         unittest.main()
-
