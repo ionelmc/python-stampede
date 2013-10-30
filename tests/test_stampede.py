@@ -109,7 +109,7 @@ class StampedeDaemonTests(ProcessTestCase):
         with TestProcess(sys.executable, __file__, 'daemon', 'test_timeout') as proc:
             with self.dump_on_error(proc.read):
                 self.wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
-                with test_connection() as fh:
+                with test_connection(3) as fh:
                     fh.write(b"test_timeout\n")
                     line = fh.readline()
                     self.assertTrue(line.startswith(b'fail:14 (job:'), line)
