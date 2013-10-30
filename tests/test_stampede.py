@@ -21,7 +21,7 @@ def test_connection(timeout=1):
             fh = sock.makefile("rwb", buffering=0)
         else:
             fh = sock.makefile(bufsize=0)
-        with fh:
+        with closing(fh):
             yield fh
 
 class StampedeDaemonTests(ProcessTestCase):
