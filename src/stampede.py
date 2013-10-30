@@ -218,7 +218,8 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                 finally:
                     for fd, (fh, _) in self.clients.items():
                         close(fh, fd)
-if __name__ == '__main__':
+
+if __name__ == '__main__': # pragma: no cover
     import logging
     logging.basicConfig(
         level=logging.DEBUG,
