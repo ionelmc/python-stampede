@@ -10,13 +10,9 @@
     :alt: Coverage Status
     :target: https://coveralls.io/r/ionelmc/python-stampede
 
-.. image:: https://pypip.in/d/python-stampede/badge.png
+.. image:: https://badge.fury.io/py/stampede.png
     :alt: PYPI Package
-    :target: https://pypi.python.org/pypi/python-stampede
-
-.. image:: https://pypip.in/v/python-stampede/badge.png
-    :alt: PYPI Package
-    :target: https://pypi.python.org/pypi/python-stampede
+    :target: https://pypi.python.org/pypi/stampede
 
 Event-loop based, miniature job queue and worker that runs the task in a subprocess (via fork). When multiple requests
 are made for the same task they are collapsed into a single instance.
