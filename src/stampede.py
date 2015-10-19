@@ -1,49 +1,26 @@
 ﻿# encoding: utf-8
+import errno
+import fcntl
+import os
+import pwd
+import select
+import signal
+import socket
+import struct
+from contextlib import closing
 from logging import getLogger
+
+import signalfd
+
 logger = getLogger(__name__)
 
-import os
-import sys
-import fcntl
-import errno
-import socket
-import signalfd
-import signal
-import select
-import struct
-import pwd
-from contextlib import closing
-from ctypes import Structure, c_uint32, c_char, c_int32, c_uint64
-
 SO_PEERCRED = 17
-
-class signalfd_siginfo(Structure):
-    _fields_ = (
-        ('ssi_signo', c_uint32),    # Signal number
-        ('ssi_errno', c_int32),     # Error number (unused)
-        ('ssi_code', c_int32),      # Signal code
-        ('ssi_pid', c_uint32),      # PID of sender
-        ('ssi_uid', c_uint32),      # Real UID of sender
-        ('ssi_fd', c_int32),        # File descriptor (SIGIO)
-        ('ssi_tid', c_uint32),      # Kernel timer ID (POSIX timers)
-        ('ssi_band', c_uint32),     # Band event (SIGIO)
-        ('ssi_overrun', c_uint32),  # POSIX timer overrun count
-        ('ssi_trapno', c_uint32),   # Trap number that caused signal
-        ('ssi_status', c_int32),    # Exit status or signal (SIGCHLD)
-        ('ssi_int', c_int32),       # Integer sent by sigqueue(2)
-        ('ssi_ptr', c_uint64),      # Pointer sent by sigqueue(2)
-        ('ssi_utime', c_uint64),    # User CPU time consumed (SIGCHLD)
-        ('ssi_stime', c_uint64),    # System CPU time consumed (SIGCHLD)
-        ('ssi_addr', c_uint64),     # Address that generated signal
-                                    # (for hardware-generated signals)
-        ('_padding', c_char * 46),  # Pad size to 128 bytes (allow for
-                                    # additional fields in the future)
-    )
 
 
 def close(*fds):
     for fd in fds:
         safe_close(fd)
+
 
 def safe_close(fd):
     try:
@@ -54,9 +31,11 @@ def safe_close(fd):
     except Exception as exc:
         logger.critical("Ignored error %s when closing fd %s", exc, fd)
 
+
 def cloexec(fd):
     fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
     return fd
+
 
 class Workspace(object):
     def __init__(self, name):
@@ -82,25 +61,28 @@ class Workspace(object):
             self.formatted_active,
             self.formatted_queue,
         )
+
     __repr__ = __str__
+
 
 class Highlander(type):
     born = False
 
     def __call__(cls, *args, **kwargs):
         if cls.born:
-            raise RuntimeError("THERE CAN BE ONLY ONE !") # You cannot make more than 1 instance of a Highlander class, it's too dangerous to have 2 !
+            raise RuntimeError(
+                "THERE CAN BE ONLY ONE !")  # You cannot make more than 1 instance of a Highlander class,
+                # it's too dangerous to have 2 !
         man = super(Highlander, cls).__call__(*args, **kwargs)
         cls.born = True
         return man
 
 
 class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
-
     queues = {}
     clients = {}
     jobs = {}
-    alarm_time = 5 * 60 # 5 minutes
+    alarm_time = 5 * 60  # 5 minutes
     socket_backlog = 5
 
     def notify_progress(self, *_a, **_kw):
@@ -130,7 +112,7 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
         raise NotImplementedError()
 
     def handle_signal(self, child_signals):
-        si = signalfd_siginfo()
+        si = signalfd.siginfo()
         try:
             child_signals.readinto(si)
         except IOError as exc:
@@ -150,7 +132,7 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                     with closing(conn):
                         conn.write(('%s (job: %d)\n' % (
                             'done' if si.ssi_status == 0
-                                   else 'fail:%d' % si.ssi_status,
+                            else 'fail:%d' % si.ssi_status,
                             si.ssi_pid
                         )).encode('ascii'))
                     fd.shutdown(socket.SHUT_RDWR)
@@ -181,11 +163,11 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
         pid, uid, gid = struct.unpack(b'3i', client_sock.getsockopt(
             socket.SOL_SOCKET, SO_PEERCRED, struct.calcsize(b'3i')
         ))
-        client_sock.settimeout(1) # fail fast as .readline() can block
+        client_sock.settimeout(1)  # fail fast as .readline() can block
         self.clients[client_sock] = client_sock.makefile('rwb'), "%s:%s" % (pwd.getpwuid(uid).pw_name, pid)
 
     def run(self):
-        child_fd = signalfd.signalfd(0, [signal.SIGCHLD], signalfd.SFD_NONBLOCK|signalfd.SFD_CLOEXEC)
+        child_fd = signalfd.signalfd(-1, [signal.SIGCHLD], signalfd.SFD_NONBLOCK | signalfd.SFD_CLOEXEC)
         with os.fdopen(child_fd, 'rb') as child_signals:
             signalfd.sigprocmask(signalfd.SIG_BLOCK, [signal.SIGCHLD])
             with closing(cloexec(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM))) as requests_sock:
@@ -219,12 +201,15 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                     for fd, (fh, _) in self.clients.items():
                         close(fh, fd)
 
-if __name__ == '__main__': # pragma: no cover
+
+if __name__ == '__main__':  # pragma: no cover
     import logging
+
     logging.basicConfig(
         level=logging.DEBUG,
         format='[pid=%(process)d - %(asctime)s]: %(name)s - %(levelname)s - %(message)s',
     )
+
 
     class MacLeod(StampedeWorker):
         socket_name = 'test.sock'
@@ -232,6 +217,7 @@ if __name__ == '__main__': # pragma: no cover
         def do_work(self, workspace_name):
             import time
             time.sleep(18)
+
 
     man = MacLeod()
     man.run()
