@@ -8,7 +8,7 @@ UDS_PATH = '/tmp/stampede-tests.sock'
 
 
 def work_dispatch(self, workspace_name):
-    test_name = sys.argv[2]
+    test_name = sys.argv[1]
     if test_name == 'test_simple':
         logging.critical('JOB %s EXECUTED', workspace_name.decode('ascii'))
     elif test_name == 'test_fail':

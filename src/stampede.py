@@ -12,6 +12,8 @@ from logging import getLogger
 
 import signalfd
 
+__version__ = '0.0.2'
+
 logger = getLogger(__name__)
 
 SO_PEERCRED = 17
@@ -112,9 +114,8 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
         raise NotImplementedError()
 
     def handle_signal(self, child_signals):
-        si = signalfd.siginfo()
         try:
-            child_signals.readinto(si)
+            si = signalfd.read_siginfo(child_signals)
         except IOError as exc:
             if exc.errno == errno.EAGAIN:
                 logger.critical("Got %s for child_fd:%s", exc, child_signals)
