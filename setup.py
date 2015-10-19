@@ -26,7 +26,7 @@ def read(*names, **kwargs):
 
 setup(
     name='stampede',
-    version='0.0.2',
+    version='1.0.0',
     license='BSD',
     description='Event-loop based, miniature job queue and worker that runs the task in a subprocess (via fork). When multiple requests are made for the same task they are collapsed into a single instance.',
     long_description='%s\n%s' % (read('README.rst'), re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))),
