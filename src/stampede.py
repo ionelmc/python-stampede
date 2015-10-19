@@ -72,9 +72,8 @@ class Highlander(type):
 
     def __call__(cls, *args, **kwargs):
         if cls.born:
-            raise RuntimeError(
-                "THERE CAN BE ONLY ONE !")  # You cannot make more than 1 instance of a Highlander class,
-                # it's too dangerous to have 2 !
+            raise RuntimeError("THERE CAN BE ONLY ONE !")
+            # You cannot make more than 1 instance of a Highlander class, it's too dangerous to have 2 !
         man = super(Highlander, cls).__call__(*args, **kwargs)
         cls.born = True
         return man
@@ -201,24 +200,3 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                 finally:
                     for fd, (fh, _) in self.clients.items():
                         close(fh, fd)
-
-
-if __name__ == '__main__':  # pragma: no cover
-    import logging
-
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[pid=%(process)d - %(asctime)s]: %(name)s - %(levelname)s - %(message)s',
-    )
-
-
-    class MacLeod(StampedeWorker):
-        socket_name = 'test.sock'
-
-        def do_work(self, workspace_name):
-            import time
-            time.sleep(18)
-
-
-    man = MacLeod()
-    man.run()
