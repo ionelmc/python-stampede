@@ -7,12 +7,11 @@ import select
 import signal
 import socket
 import struct
+import sys
 from contextlib import closing
 from logging import getLogger
 
 import signalfd
-
-__version__ = '1.0.0'
 
 logger = getLogger(__name__)
 
@@ -37,6 +36,53 @@ def safe_close(fd):
 def cloexec(fd):
     fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
     return fd
+
+
+def collect_sigchld(sigfd, closeok=False):
+    pending = {}
+
+    while True:
+        try:
+            si = signalfd.read_siginfo(sigfd)
+        except (OSError, IOError) as exc:
+            if close and exc.errno == errno.EBADF:
+                logger.critical("Can't read any more events from signalfd (it's closed).")
+            elif exc.errno != errno.EAGAIN:
+                raise exc
+
+            sys.exc_clear()
+            break
+        else:
+            assert si.ssi_signo == signal.SIGCHLD
+            try:
+                os.waitpid(si.ssi_pid, os.WNOHANG)
+            except OSError as exc:
+                if exc.errno == errno.ECHILD:
+                    pending[si.ssi_pid] = -errno.ECHILD
+                else:
+                    raise
+            else:
+                pending[si.ssi_pid] = si.ssi_status
+
+    while True:
+        try:
+            pid, exit_code = os.waitpid(0, os.WNOHANG)
+        except OSError as exc:
+            if exc.errno != 10:
+                raise
+            sys.exc_clear()
+            break
+        else:
+            if not pid:
+                break
+            if pid not in pending:
+                if os.WIFEXITED(exit_code):
+                    pending[pid] = os.WEXITSTATUS(exit_code)
+                elif os.WIFSIGNALED(exit_code):
+                    pending[pid] = os.WTERMSIG(exit_code)
+                elif os.WIFSTOPPED(exit_code):
+                    pending[pid] = os.WSTOPSIG(exit_code)
+    return pending
 
 
 class Workspace(object):
@@ -72,8 +118,9 @@ class Highlander(type):
 
     def __call__(cls, *args, **kwargs):
         if cls.born:
-            raise RuntimeError("THERE CAN BE ONLY ONE !")
-            # You cannot make more than 1 instance of a Highlander class, it's too dangerous to have 2 !
+            raise RuntimeError(
+                "THERE CAN BE ONLY ONE !")  # You cannot make more than 1 instance of a Highlander class,
+            # it's too dangerous to have 2 !
         man = super(Highlander, cls).__call__(*args, **kwargs)
         cls.born = True
         return man
@@ -113,34 +160,25 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
         raise NotImplementedError()
 
     def handle_signal(self, child_signals):
-        try:
-            si = signalfd.read_siginfo(child_signals)
-        except IOError as exc:
-            if exc.errno == errno.EAGAIN:
-                logger.critical("Got %s for child_fd:%s", exc, child_signals)
-                return
-            raise
-
-        assert si.ssi_signo == signal.SIGCHLD
-        os.waitpid(si.ssi_pid, os.WNOHANG)
-        workspace = self.jobs.pop(si.ssi_pid)
-        logger.info("Job %r completed. Passing back results to [%s]", si.ssi_pid, workspace.formatted_active)
-        while workspace.active:
-            fd, conn, client_id = workspace.active.pop()
-            with closing(fd):
-                try:
-                    with closing(conn):
-                        conn.write(('%s (job: %d)\n' % (
-                            'done' if si.ssi_status == 0
-                            else 'fail:%d' % si.ssi_status,
-                            si.ssi_pid
-                        )).encode('ascii'))
-                    fd.shutdown(socket.SHUT_RDWR)
-                except EnvironmentError:
-                    logger.exception("Failed to send response to %s", client_id)
-        self.process_workspace(workspace)
-        if workspace.is_dead:
-            self.queues.pop(workspace.name)
+        for pid, exit_code in collect_sigchld(child_signals).items():
+            workspace = self.jobs.pop(pid)
+            logger.info("Job %r completed. Passing back results to [%s]", pid, workspace.formatted_active)
+            while workspace.active:
+                fd, conn, client_id = workspace.active.pop()
+                with closing(fd):
+                    try:
+                        with closing(conn):
+                            conn.write(('%s (job: %d)\n' % (
+                                'done' if exit_code == 0
+                                else 'fail:%d' % exit_code,
+                                pid
+                            )).encode('ascii'))
+                        fd.shutdown(socket.SHUT_RDWR)
+                    except EnvironmentError:
+                        logger.exception("Failed to send response to %s", client_id)
+            self.process_workspace(workspace)
+            if workspace.is_dead:
+                self.queues.pop(workspace.name)
 
     def handle_request(self, fd):
         conn, client_id = self.clients.pop(fd)
@@ -171,6 +209,7 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
         with os.fdopen(child_fd, 'rb') as child_signals:
             signalfd.sigprocmask(signalfd.SIG_BLOCK, [signal.SIGCHLD])
             with closing(cloexec(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM))) as requests_sock:
+                logger.info("Binding to %r", self.socket_name)
                 if os.path.exists(self.socket_name):
                     os.unlink(self.socket_name)
                 requests_sock.bind(self.socket_name)
@@ -200,3 +239,4 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                 finally:
                     for fd, (fh, _) in self.clients.items():
                         close(fh, fd)
+
