@@ -2,6 +2,13 @@
 Changelog
 =========
 
+
+1.1.0 (2015-10-19)
+------------------
+
+* Use more robust collection of child exit codes. Turns out that if there's enough pressure of the signalfd is fills up and
+  needs extra ``os.waitpid()`` calls to collect the orphans.
+
 1.0.0 (2015-10-19)
 ------------------
 
