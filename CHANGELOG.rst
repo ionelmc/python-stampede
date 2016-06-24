@@ -3,7 +3,7 @@ Changelog
 =========
 
 
-1.1.0 (2015-10-19)
+1.1.0 (2016-06-24)
 ------------------
 
 * Use more robust collection of child exit codes. Turns out that if there's enough pressure of the signalfd is fills up and
