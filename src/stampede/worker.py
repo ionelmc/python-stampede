@@ -1,88 +1,20 @@
-﻿# encoding: utf-8
-import errno
-import fcntl
-import os
+﻿import os
 import pwd
 import select
 import signal
 import socket
 import struct
-import sys
 from contextlib import closing
 from logging import getLogger
 
 import signalfd
 
+from .lock import FileLock
+from .utils import collect_sigchld, close, cloexec
+
 logger = getLogger(__name__)
 
 SO_PEERCRED = 17
-
-
-def close(*fds):
-    for fd in fds:
-        safe_close(fd)
-
-
-def safe_close(fd):
-    try:
-        if isinstance(fd, int):
-            os.close(fd)
-        else:
-            fd.close()
-    except Exception as exc:
-        logger.critical("Ignored error %s when closing fd %s", exc, fd)
-
-
-def cloexec(fd):
-    fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
-    return fd
-
-
-def collect_sigchld(sigfd, closeok=False):
-    pending = {}
-
-    while True:
-        try:
-            si = signalfd.read_siginfo(sigfd)
-        except (OSError, IOError) as exc:
-            if close and exc.errno == errno.EBADF:
-                logger.critical("Can't read any more events from signalfd (it's closed).")
-            elif exc.errno != errno.EAGAIN:
-                raise exc
-
-            sys.exc_clear()
-            break
-        else:
-            assert si.ssi_signo == signal.SIGCHLD
-            try:
-                os.waitpid(si.ssi_pid, os.WNOHANG)
-            except OSError as exc:
-                if exc.errno == errno.ECHILD:
-                    pending[si.ssi_pid] = -errno.ECHILD
-                else:
-                    raise
-            else:
-                pending[si.ssi_pid] = si.ssi_status
-
-    while True:
-        try:
-            pid, exit_code = os.waitpid(0, os.WNOHANG)
-        except OSError as exc:
-            if exc.errno != 10:
-                raise
-            sys.exc_clear()
-            break
-        else:
-            if not pid:
-                break
-            if pid not in pending:
-                if os.WIFEXITED(exit_code):
-                    pending[pid] = os.WEXITSTATUS(exit_code)
-                elif os.WIFSIGNALED(exit_code):
-                    pending[pid] = os.WTERMSIG(exit_code)
-                elif os.WIFSTOPPED(exit_code):
-                    pending[pid] = os.WSTOPSIG(exit_code)
-    return pending
 
 
 class Workspace(object):
@@ -113,30 +45,42 @@ class Workspace(object):
     __repr__ = __str__
 
 
-class Highlander(type):
-    born = False
+class SingleInstanceMeta(type):
+    __inst = None
 
-    def __call__(cls, *args, **kwargs):
-        if cls.born:
-            raise RuntimeError(
-                "THERE CAN BE ONLY ONE !")  # You cannot make more than 1 instance of a Highlander class,
-            # it's too dangerous to have 2 !
-        man = super(Highlander, cls).__call__(*args, **kwargs)
-        cls.born = True
-        return man
+    def __call__(cls, path):
+        if cls.__inst is not None:
+            raise RuntimeError("Only 1 instance allowed!")
+
+        lock = FileLock(path)
+        if lock.acquire():
+            inst = cls.__inst = super(SingleInstanceMeta, cls).__call__(path)
+            return inst
+        else:
+            return StampedeStub()
 
 
-class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
+class StampedeStub(object):
+    def run(self):
+        pass
+
+
+class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
     queues = {}
     clients = {}
     jobs = {}
-    alarm_time = 5 * 60  # 5 minutes
+    alarm_time = 5 * 60  # abort in 5 minutes if no progress
     socket_backlog = 5
+
+    def __init__(self, path):
+        self.socket_path = '%s.sock' % path
 
     def notify_progress(self, *_a, **_kw):
         signal.alarm(self.alarm_time)
 
     def process_workspace(self, workspace):
+        if not workspace.name:
+            return
         if not workspace.active and workspace.queue:
             pid = os.fork()
             if pid:
@@ -174,8 +118,8 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                                 pid
                             )).encode('ascii'))
                         fd.shutdown(socket.SHUT_RDWR)
-                    except EnvironmentError:
-                        logger.exception("Failed to send response to %s", client_id)
+                    except EnvironmentError as exc:
+                        logger.error("Failed to send response to %s: %s", client_id, exc)
             self.process_workspace(workspace)
             if workspace.is_dead:
                 self.queues.pop(workspace.name)
@@ -209,10 +153,10 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
         with os.fdopen(child_fd, 'rb') as child_signals:
             signalfd.sigprocmask(signalfd.SIG_BLOCK, [signal.SIGCHLD])
             with closing(cloexec(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM))) as requests_sock:
-                logger.info("Binding to %r", self.socket_name)
-                if os.path.exists(self.socket_name):
-                    os.unlink(self.socket_name)
-                requests_sock.bind(self.socket_name)
+                logger.info("Binding to %r", self.socket_path)
+                if os.path.exists(self.socket_path):
+                    os.unlink(self.socket_path)
+                requests_sock.bind(self.socket_path)
                 requests_sock.listen(self.socket_backlog)
                 try:
                     while 1:
@@ -239,4 +183,3 @@ class StampedeWorker(Highlander("StampedeWorkerBase", (object,), {})):
                 finally:
                     for fd, (fh, _) in self.clients.items():
                         close(fh, fd)
-

@@ -16,9 +16,7 @@ cookiecutter:
     landscape: 'yes'
     package_name: stampede
     project_name: Stampede
-    project_short_description: Event-loop based, miniature job queue and worker that
-        runs the task in a subprocess (via fork). When multiple requests are made
-        for the same task they are collapsed into a single instance.
+    project_short_description: 'Event-loop based, miniature job queue and worker that runs the task in a subprocess (via fork). When multiple requests are made for the same task they are collapsed into a single instance.'
     release_date: today
     repo_name: python-stampede
     requiresio: 'yes'
