@@ -34,7 +34,7 @@ def connection(timeout=1):
 
 
 def test_request():
-    with TestProcess(sys.executable, '-u', helper.__file__, 'test_simple') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             line = client.request(helper.PATH, b"foobar")
