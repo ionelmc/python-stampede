@@ -11,6 +11,7 @@ import signalfd
 logger = getLogger(__name__)
 
 ProcessExit = namedtuple("ProcessExit", ["pid", "status"])
+IS_PY2 = sys.version_info[0] == 2
 
 
 def close(*fds):
@@ -44,8 +45,8 @@ def collect_sigchld(sigfd, closeok=False):
                 logger.critical("Can't read any more events from signalfd (it's closed).")
             elif exc.errno not in (errno.EAGAIN, errno.EINTR):
                 raise exc
-
-            sys.exc_clear()
+            if IS_PY2:
+                sys.exc_clear()
             break
         else:
             assert si.ssi_signo == signal.SIGCHLD
@@ -74,7 +75,8 @@ def wait_pid(pid=0, mode=os.WNOHANG):
                 continue
             if exc.errno != errno.ECHILD:
                 raise
-            sys.exc_clear()
+            if IS_PY2:
+                sys.exc_clear()
             break
         else:
             if not exit_pid:

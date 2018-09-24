@@ -7,25 +7,29 @@ from logging import getLogger
 from time import time, sleep
 
 from .lock import FileLock
+from .utils import IS_PY2
 
 logger = getLogger(__name__)
 
 
 def request(path, data, async=False):
     logger.info("request(%r, %r, async=%s)", path, data, async)
-    if "\n" in data or "\r" in data:
+    if b"\n" in data or b"\r" in data:
         raise RuntimeError("Request data must not have line endings!")
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         with closing(sock):
             sock.settimeout(None)
             sock.connect("%s.sock" % path)
-            fh = sock.makefile(bufsize=0)
-            fh.write("%s\n" % data)
+            if IS_PY2:
+                fh = sock.makefile(bufsize=0)
+            else:
+                fh = sock.makefile("rwb", buffering=0)
+            fh.write(b"%s\n" % data)
             if async:
                 return
             line = fh.readline()
-            if not line.startswith("done"):
+            if not line.startswith(b"done"):
                 raise RuntimeError("Request failed: %r. Check the logs !" % line)
             logger.info("request(%r, %r, async=%s) - DONE.", path, data, async)
             return line
