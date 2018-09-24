@@ -29,11 +29,11 @@ class Workspace(object):
 
     @property
     def formatted_active(self):
-        return ', '.join(i for _, _, i in self.active)
+        return ", ".join(i for _, _, i in self.active)
 
     @property
     def formatted_queue(self):
-        return ', '.join(i for _, _, i in self.queue)
+        return ", ".join(i for _, _, i in self.queue)
 
     def __str__(self):
         return "Workspace(%s, active=[%s], queue=[%s])" % (
@@ -73,7 +73,7 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
     socket_backlog = 5
 
     def __init__(self, path):
-        self.socket_path = '%s.sock' % path
+        self.socket_path = "%s.sock" % path
 
     def notify_progress(self, *_a, **_kw):
         signal.alarm(self.alarm_time)
@@ -112,11 +112,11 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 with closing(fd):
                     try:
                         with closing(conn):
-                            conn.write(('%s (job: %d)\n' % (
-                                'done' if exit_code == 0
-                                else 'fail:%d' % exit_code,
+                            conn.write(("%s (job: %d)\n" % (
+                                "done" if exit_code == 0
+                                else "fail:%d" % exit_code,
                                 pid
-                            )).encode('ascii'))
+                            )).encode("ascii"))
                         fd.shutdown(socket.SHUT_RDWR)
                     except EnvironmentError as exc:
                         logger.error("Failed to send response to %s: %s", client_id, exc)
@@ -135,22 +135,22 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
             workspace.queue.append((fd, conn, client_id))
             self.process_workspace(workspace)
         except Exception:
-            logger.exception('Failed to read request from client %s', client_id)
+            logger.exception("Failed to read request from client %s", client_id)
             close(conn, fd)
             raise
 
     def handle_accept(self, requests_sock):
         client_sock, _ = requests_sock.accept()
         cloexec(client_sock)
-        pid, uid, gid = struct.unpack(b'3i', client_sock.getsockopt(
-            socket.SOL_SOCKET, SO_PEERCRED, struct.calcsize(b'3i')
+        pid, uid, gid = struct.unpack(b"3i", client_sock.getsockopt(
+            socket.SOL_SOCKET, SO_PEERCRED, struct.calcsize(b"3i")
         ))
         client_sock.settimeout(1)  # fail fast as .readline() can block
-        self.clients[client_sock] = client_sock.makefile('rwb'), "%s:%s" % (pwd.getpwuid(uid).pw_name, pid)
+        self.clients[client_sock] = client_sock.makefile("rwb"), "%s:%s" % (pwd.getpwuid(uid).pw_name, pid)
 
     def run(self):
         child_fd = signalfd.signalfd(-1, [signal.SIGCHLD], signalfd.SFD_NONBLOCK | signalfd.SFD_CLOEXEC)
-        with os.fdopen(child_fd, 'rb') as child_signals:
+        with os.fdopen(child_fd, "rb") as child_signals:
             signalfd.sigprocmask(signalfd.SIG_BLOCK, [signal.SIGCHLD])
             with closing(cloexec(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM))) as requests_sock:
                 logger.info("Binding to %r", self.socket_path)
