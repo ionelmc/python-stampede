@@ -17,9 +17,7 @@ Overview
       - | |version| |wheel| |supported-versions| |supported-implementations|
         | |commits-since|
 
-.. |docs| image:: https://readthedocs.org/projects/python-stampede/badge/?style=flat
-    :target: https://readthedocs.org/projects/python-stampede
-    :alt: Documentation Status
+
 
 .. |travis| image:: https://travis-ci.org/ionelmc/python-stampede.svg?branch=master
     :alt: Travis-CI Build Status
@@ -91,7 +89,19 @@ Installation
 Documentation
 =============
 
-https://python-stampede.readthedocs.io/
+
+To use the project:
+
+.. code-block:: python
+
+    import stampede
+
+
+    class MyWorker(StampedeWorker):
+
+        def do_work(self, name):
+            print("Perfoming work for task:", name)
+
 
 Development
 ===========

@@ -100,7 +100,7 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                     close(*self.clients.keys())
                     os._exit(0)
 
-    def do_work(self, workspace_name):
+    def do_work(self, name):
         raise NotImplementedError()
 
     def handle_signal(self, child_signals):
