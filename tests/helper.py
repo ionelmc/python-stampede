@@ -1,8 +1,16 @@
 import logging
+import os
 import time
 import sys
 
 from stampede import StampedeWorker
+
+try:
+    from pytest_cov.embed import cleanup
+    os._exit = lambda code, original=os._exit: cleanup() or original(code)
+except ImportError:
+    pass
+
 
 PATH = '/tmp/stampede-tests'
 
