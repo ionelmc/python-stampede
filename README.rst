@@ -1,6 +1,8 @@
 ========
-Stampede
+Overview
 ========
+
+.. start-badges
 
 .. list-table::
     :stub-columns: 1
@@ -12,7 +14,8 @@ Stampede
         | |coveralls| |codecov|
         | |landscape| |scrutinizer| |codacy| |codeclimate|
     * - package
-      - |version| |downloads| |wheel| |supported-versions| |supported-implementations|
+      - | |version| |wheel| |supported-versions| |supported-implementations|
+        | |commits-since|
 
 .. |docs| image:: https://readthedocs.org/projects/python-stampede/badge/?style=flat
     :target: https://readthedocs.org/projects/python-stampede
@@ -38,41 +41,45 @@ Stampede
     :target: https://landscape.io/github/ionelmc/python-stampede/master
     :alt: Code Quality Status
 
-.. |codacy| image:: https://img.shields.io/codacy/REPLACE_WITH_PROJECT_ID.svg?style=flat
+.. |codacy| image:: https://img.shields.io/codacy/REPLACE_WITH_PROJECT_ID.svg
     :target: https://www.codacy.com/app/ionelmc/python-stampede
     :alt: Codacy Code Quality Status
 
 .. |codeclimate| image:: https://codeclimate.com/github/ionelmc/python-stampede/badges/gpa.svg
    :target: https://codeclimate.com/github/ionelmc/python-stampede
    :alt: CodeClimate Quality Status
-.. |version| image:: https://img.shields.io/pypi/v/stampede.svg?style=flat
+
+.. |version| image:: https://img.shields.io/pypi/v/stampede.svg
     :alt: PyPI Package latest release
     :target: https://pypi.python.org/pypi/stampede
 
-.. |downloads| image:: https://img.shields.io/pypi/dm/stampede.svg?style=flat
-    :alt: PyPI Package monthly downloads
-    :target: https://pypi.python.org/pypi/stampede
+.. |commits-since| image:: https://img.shields.io/github/commits-since/ionelmc/python-stampede/v1.0.0.svg
+    :alt: Commits since latest release
+    :target: https://github.com/ionelmc/python-stampede/compare/v1.0.0...master
 
-.. |wheel| image:: https://img.shields.io/pypi/wheel/stampede.svg?style=flat
+.. |wheel| image:: https://img.shields.io/pypi/wheel/stampede.svg
     :alt: PyPI Wheel
     :target: https://pypi.python.org/pypi/stampede
 
-.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/stampede.svg?style=flat
+.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/stampede.svg
     :alt: Supported versions
     :target: https://pypi.python.org/pypi/stampede
 
-.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/stampede.svg?style=flat
+.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/stampede.svg
     :alt: Supported implementations
     :target: https://pypi.python.org/pypi/stampede
 
-.. |scrutinizer| image:: https://img.shields.io/scrutinizer/g/ionelmc/python-stampede/master.svg?style=flat
+.. |scrutinizer| image:: https://img.shields.io/scrutinizer/g/ionelmc/python-stampede/master.svg
     :alt: Scrutinizer Status
     :target: https://scrutinizer-ci.com/g/ionelmc/python-stampede/
 
-Event-loop based, miniature job queue and worker that runs the task in a subprocess (via fork). When multiple requests are made for the same
-task they are collapsed into a single instance.
 
-* Free software: BSD license
+.. end-badges
+
+Event-loop based, miniature job queue and worker that runs the task in a subprocess (via fork). When multiple requests
+are made for the same task they are collapsed into a single instance.
+
+* Free software: BSD 2-Clause License
 
 Installation
 ============
@@ -84,7 +91,7 @@ Installation
 Documentation
 =============
 
-https://python-stampede.readthedocs.org/
+https://python-stampede.readthedocs.io/
 
 Development
 ===========
