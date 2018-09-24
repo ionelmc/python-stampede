@@ -78,7 +78,8 @@ install:
          pypy3-*/bin/pypy -m ensurepip
          pypy3-*/bin/pypy -m pip install -U virtualenv)
         export PATH=$(echo $HOME/pypy3-*/bin):$PATH
-        export TOXPYTHON=$(echo $HOME/pypy3-*/bin/pypy)    fi
+        export TOXPYTHON=$(echo $HOME/pypy3-*/bin/pypy)
+    fi
     set +x
 script:
   - tox -v
