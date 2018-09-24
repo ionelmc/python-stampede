@@ -6,6 +6,7 @@ import time
 from contextlib import closing
 from contextlib import contextmanager
 
+import psutil
 import pytest
 from process_tests import TestProcess
 from process_tests import dump_on_error
@@ -46,6 +47,42 @@ def test_request():
                              'Queues => 0 workspaces')
 
 
+def test_request_and_spawn(capfd):
+    try:
+        line = client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
+        assert line.startswith(b'done (job:'), line
+
+        captured = capfd.readouterr()
+        assert '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()) in captured.err
+        assert 'JOB foobar EXECUTED' in captured.err
+        assert 'completed. Passing back results to' in captured.err
+        assert 'Queues => 0 workspaces' in captured.err
+
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
+        line = client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
+        assert line.startswith(b'done (job:'), line
+    except Exception:
+        children = psutil.Process(os.getpid()).children(recursive=True)
+        assert len(children) == 1
+        for child in psutil.Process(os.getpid()).children(recursive=True):
+            child.kill()
+        raise
+    else:
+        children = psutil.Process(os.getpid()).children(recursive=True)
+        assert len(children) == 1
+        for child in children:
+            child.kill()
+
+    captured = capfd.readouterr()
+    assert '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()) in captured.err
+    assert 'JOB foobar EXECUTED' in captured.err
+    assert 'completed. Passing back results to' in captured.err
+    assert 'Queues => 0 workspaces' in captured.err
+
+
 def test_simple():
     with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
         with dump_on_error(proc.read):
@@ -59,8 +96,7 @@ def test_simple():
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                                  'JOB first-second EXECUTED',
                                  'completed. Passing back results to',
-                                 'Queues => 0 workspaces',
-                                 )
+                                 'Queues => 0 workspaces')
 
 
 def test_fail():
@@ -76,8 +112,7 @@ def test_fail():
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                                  'Failed job',
                                  'Exception: FAIL',
-                                 'Queues => 0 workspaces',
-                                 )
+                                 'Queues => 0 workspaces')
 
 
 def test_incomplete_request():
@@ -157,8 +192,7 @@ def test_bad_client():
                              '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                              'JOB first-second EXECUTED',
                              'completed. Passing back results to',
-                             'Failed to send response to ',
-                             )
+                             'Failed to send response to ')
 
 
 def test_double_instance():
