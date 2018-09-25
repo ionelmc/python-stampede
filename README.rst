@@ -74,8 +74,9 @@ Overview
 
 .. end-badges
 
-Event-loop based, miniature job queue and worker that runs the task in a subprocess (via fork). When multiple requests
-are made for the same task they are collapsed into a single instance.
+A really simple job queue. Uses a rudimentary event loop and runs tasks in subprocesses (managed with signalfd).
+Doesn't support task arguments. Task results are rudimentary (only succcess or failure with exit code). When multiple
+requests are made for the same task they are collapsed into a single request.
 
 * Free software: BSD 2-Clause License
 
