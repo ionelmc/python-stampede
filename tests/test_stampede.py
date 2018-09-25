@@ -58,10 +58,10 @@ def test_request_and_spawn(capfd):
         assert 'completed. Passing back results to' in captured.err
         assert 'Queues => 0 workspaces' in captured.err
 
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", async=True)
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
+        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
         line = client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
         assert line.startswith(b'done (job:'), line
     except Exception:
