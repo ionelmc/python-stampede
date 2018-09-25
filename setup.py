@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
+from __future__ import print_function
 
 import io
 import re
@@ -25,7 +26,7 @@ setup(
     name='stampede',
     version='1.0.0',
     license='BSD 2-Clause License',
-    description='Event-loop based, miniature job queue and worker that runs the task in a subprocess (via fork). When multiple requests are made for the same task they are collapsed into a single instance.',
+    description="A really simple job queue. Uses a rudimentary event loop and runs tasks in subprocesses (managed with signalfd). Doesn't support task arguments. Task results are rudimentary (only succcess or failure with exit code). When multiple requests are made for the same task they are collapsed into a single request.",
     long_description='%s\n%s' % (
         re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
         re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
