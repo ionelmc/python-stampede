@@ -15,12 +15,6 @@ matrix:
     - python: '2.7'
       env:
         - TOXENV=py27-nocov
-    - python: '3.4'
-      env:
-        - TOXENV=py34-cover,report,coveralls,codecov
-    - python: '3.4'
-      env:
-        - TOXENV=py34-nocov
     - python: '3.5'
       env:
         - TOXENV=py35-cover,report,coveralls,codecov
