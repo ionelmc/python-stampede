@@ -10,7 +10,9 @@ from logging import getLogger
 import signalfd
 
 from .lock import FileLock
-from .utils import collect_sigchld, close, cloexec
+from .utils import cloexec
+from .utils import close
+from .utils import collect_sigchld
 
 logger = getLogger(__name__)
 

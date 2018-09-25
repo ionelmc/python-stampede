@@ -145,7 +145,8 @@ def test_queue_collapse():
                 clients.append((fh, sock))
             try:
                 t1 = time.time()
-                result = [fh.readline() for fh, _ in clients]
+                for fh, _ in clients:
+                    fh.readline()
                 delta = time.time() - t1
                 if delta > TIMEOUT:
                     raise AssertionError('Jobs took too much time (%0.2f sec)' % delta)

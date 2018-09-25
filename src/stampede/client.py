@@ -1,10 +1,10 @@
 import os
 import socket
-import sys
 from contextlib import closing
-from os.path import exists
 from logging import getLogger
-from time import time, sleep
+from os.path import exists
+from time import sleep
+from time import time
 
 from .lock import FileLock
 from .utils import IS_PY2
