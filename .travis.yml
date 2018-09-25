@@ -37,12 +37,18 @@ matrix:
       sudo: required
       env:
         - TOXENV=py37-nocov
-    - python: 'pypy-5.4'
+    - python: 'pypy'
       env:
         - TOXENV=pypy-cover,report,coveralls,codecov
-    - python: 'pypy-5.4'
+    - python: 'pypy'
       env:
         - TOXENV=pypy-nocov
+    - python: 'pypy3'
+      env:
+        - TOXENV=pypy3-cover,report,coveralls,codecov
+    - python: 'pypy3'
+      env:
+        - TOXENV=pypy3-nocov
 before_install:
   - python --version
   - uname -a
