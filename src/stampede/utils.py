@@ -41,7 +41,7 @@ def collect_sigchld(sigfd, closeok=False):
         try:
             si = signalfd.read_siginfo(sigfd)
         except (OSError, IOError) as exc:
-            if close and exc.errno == errno.EBADF:
+            if closeok and exc.errno == errno.EBADF:
                 logger.critical("Can't read any more events from signalfd (it's closed).")
             elif exc.errno not in (errno.EAGAIN, errno.EINTR):
                 raise exc
