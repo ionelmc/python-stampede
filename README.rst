@@ -100,7 +100,7 @@ To use the project:
 
     class MyWorker(StampedeWorker):
 
-        def do_work(self, name):
+        def handle_task(self, name):
             print("Perfoming work for task:", name)
 
 

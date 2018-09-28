@@ -18,7 +18,7 @@ PATH = '/tmp/stampede-tests'
 class MockedStampedeWorker(StampedeWorker):
     alarm_time = 1
 
-    def do_work(self, workspace_name):
+    def handle_task(self, workspace_name):
         test_name = sys.argv[1]
         if test_name == 'test_simple':
             logging.critical('JOB %s EXECUTED', workspace_name.decode('ascii'))

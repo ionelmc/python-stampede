@@ -20,8 +20,8 @@ SO_PEERCRED = 17
 
 
 class Workspace(object):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, key):
+        self.key = key
         self.queue = []
         self.active = None
 
@@ -39,7 +39,7 @@ class Workspace(object):
 
     def __str__(self):
         return "Workspace(%s, active=[%s], queue=[%s])" % (
-            self.name,
+            self.key,
             self.formatted_active,
             self.formatted_queue,
         )
@@ -81,7 +81,7 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
         signal.alarm(self.alarm_time)
 
     def process_workspace(self, workspace):
-        if not workspace.name:
+        if not workspace.key:
             return
         if not workspace.active and workspace.queue:
             pid = os.fork()
@@ -89,20 +89,20 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 workspace.active = workspace.queue
                 workspace.queue = []
                 self.jobs[pid] = workspace
-                logger.info("Started job %r for %s", pid, workspace)
+                logger.info("Started task %r for %s", pid, workspace)
             else:
-                logger.info("Running job %r workspace_name=%s", os.getpid(), workspace.name)
+                logger.info("Running task %r key=%s", os.getpid(), workspace.key)
                 try:
                     self.notify_progress()
-                    self.do_work(workspace.name)
-                    logger.info("Completed job %r workspace_name=%s", os.getpid(), workspace.name)
+                    self.handle_task(workspace.key)
+                    logger.info("Completed task %r key=%s", os.getpid(), workspace.key)
                 except Exception:
-                    logger.exception("Failed job %r workspace_name=%s", os.getpid(), workspace.name)
+                    logger.exception("Failed task %r key=%s", os.getpid(), workspace.key)
                 finally:
                     close(*self.clients.keys())
                     os._exit(0)
 
-    def do_work(self, name):
+    def handle_task(self, key):
         raise NotImplementedError()
 
     def handle_signal(self, child_signals):
@@ -124,16 +124,16 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                         logger.error("Failed to send response to %s: %s", client_id, exc)
             self.process_workspace(workspace)
             if workspace.is_dead:
-                self.queues.pop(workspace.name)
+                self.queues.pop(workspace.key)
 
     def handle_request(self, fd):
         conn, client_id = self.clients.pop(fd)
         try:
-            workspace_name = conn.readline().strip()
-            if workspace_name in self.queues:
-                workspace = self.queues[workspace_name]
+            key = conn.readline().strip()
+            if key in self.queues:
+                workspace = self.queues[key]
             else:
-                workspace = self.queues.setdefault(workspace_name, Workspace(workspace_name))
+                workspace = self.queues.setdefault(key, Workspace(key))
             workspace.queue.append((fd, conn, client_id))
             self.process_workspace(workspace)
         except Exception:
@@ -185,3 +185,4 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 finally:
                     for fd, (fh, _) in self.clients.items():
                         close(fh, fd)
+

@@ -6,16 +6,19 @@ from os.path import exists
 from time import sleep
 from time import time
 
+from subprocess32 import DEVNULL
+from subprocess32 import Popen
+
 from .lock import FileLock
 from .utils import IS_PY2
 
 logger = getLogger(__name__)
 
 
-def request(path, data, wait=True):
-    logger.info("request(%r, %r, wait=%s)", path, data, wait)
-    if b"\n" in data or b"\r" in data:
-        raise RuntimeError("Request data must not have line endings!")
+def request(path, key, wait=True):
+    logger.info("request %r wait=%s", key, wait)
+    if b"\n" in key or b"\r" in key:
+        raise RuntimeError("Request key must not have line endings!")
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         with closing(sock):
@@ -25,38 +28,35 @@ def request(path, data, wait=True):
                 fh = sock.makefile(bufsize=0)
             else:
                 fh = sock.makefile("rwb", buffering=0)
-            fh.write(b"%s\n" % data)
+            fh.write(b"%s\n" % key)
             if not wait:
                 return
             line = fh.readline()
             if not line.startswith(b"done"):
-                raise RuntimeError("Request failed: %r. Check the logs !" % line)
-            logger.info("request(%r, %r, wait=%s) - DONE.", path, data, wait)
+                raise RuntimeError("Request failed: %r. Check the logs!" % line)
+            logger.info("request key=%r - DONE", key)
             return line
     except Exception:
-        logger.exception("request(%r, %r, wait=%s) - FAILED:", path, data, wait)
+        logger.exception("request key=%r wait=%s - FAILED:", key, wait)
         raise
 
 
-def request_and_spawn(cli, path, data, wait=True, timeout=1):
+def request_and_spawn(cli, path, key, wait=True, timeout=1):
     socket_path = "%s.sock" % path
     if exists(socket_path):
-        logger.debug("request_and_spawn(%r, %r, %r, wait=%s) - %s already exists. Checking if lock active ...",
-                     cli, path, data, wait, socket_path)
+        logger.info("request_and_spawn key=%r wait=%s - socket already exists", key, wait)
         lock = FileLock(path)
         if lock.acquire():
-            logger.debug("request_and_spawn(%r, %r, %r, wait=%s) - Not locked. Spawning daemon ...",
-                         cli, path, data, wait)
+            logger.info("request_and_spawn key=%r - got lock, spawning daemon ...", key)
             lock.release()
             os.unlink(socket_path)
-            os.spawnl(os.P_NOWAIT, *cli)
+            Popen(cli, stdin=DEVNULL, close_fds=True)
     else:
-        logger.debug("request_and_spawn(%r, %r, %r, wait=%s) - %s doesn't exist. Spawning daemon ...",
-                     cli, path, data, wait, socket_path)
-        os.spawnl(os.P_NOWAIT, *cli)
+        logger.info("request_and_spawn key=%r wait=%s - no socket, spawning daemon ...", key, wait)
+        Popen(cli, stdin=DEVNULL, close_fds=True)
 
     t = time()
     while not exists(socket_path) and time() - t < timeout:
         sleep(0.01)
 
-    return request(path, data, wait=wait)
+    return request(path, key, wait=wait)
