@@ -6,15 +6,15 @@ import time
 from contextlib import closing
 from contextlib import contextmanager
 
+import helper
 import psutil
 import pytest
 from process_tests import TestProcess
 from process_tests import dump_on_error
 from process_tests import wait_for_strings
-
 from stampede import client
-
-import helper
+from subprocess32 import DEVNULL
+from subprocess32 import Popen
 
 UDS_PATH = '%s.sock' % helper.PATH
 TIMEOUT = int(os.getenv('REDIS_LOCK_TEST_TIMEOUT', 5))
@@ -47,40 +47,75 @@ def test_request():
                              'Queues => 0 workspaces')
 
 
-def test_request_and_spawn(capfd):
-    try:
-        line = client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
-        assert line.startswith(b'done (job:'), line
+@pytest.fixture(params=['dead', 'running', 'clean'])
+def setup_request_and_spawn(request):
+    if request.param == 'clean':
+        if os.path.exists(UDS_PATH):
+            os.unlink(UDS_PATH)
+    elif request.param == 'running':
+        Popen([sys.executable, helper.__file__, 'test_simple'], stdin=DEVNULL, close_fds=True)
+        t = time.time()
+        while not os.path.exists(UDS_PATH) and time() - t < 1:
+            time.sleep(0.01)
+    elif request.param == 'dead':
+        if os.path.exists(UDS_PATH):
+            os.unlink(UDS_PATH)
+        with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
+            sock.bind(UDS_PATH)
+    else:
+        raise RuntimeError("Unknown param %r" % request.param)
+    yield request.param
+    for child in psutil.Process(os.getpid()).children(recursive=True):
+        child.kill()
+        child.wait()
 
-        captured = capfd.readouterr()
+    assert len(psutil.Process(os.getpid()).children()) == 0
+
+
+def test_request_and_spawn(capfd, setup_request_and_spawn):
+    line = client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
+    assert line.startswith(b'done (job:'), line
+
+    captured = capfd.readouterr()
+    print('**************\n%s\n**************' % captured.err)
+
+    if setup_request_and_spawn != 'running':
         assert '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()) in captured.err
         assert 'JOB foobar EXECUTED' in captured.err
         assert 'completed. Passing back results to' in captured.err
         assert 'Queues => 0 workspaces' in captured.err
 
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
-        client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
-        line = client.request_and_spawn([sys.executable, sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
-        assert line.startswith(b'done (job:'), line
-    except Exception:
-        children = psutil.Process(os.getpid()).children(recursive=True)
-        assert len(children) == 1
-        for child in psutil.Process(os.getpid()).children(recursive=True):
-            child.kill()
-        raise
-    else:
-        children = psutil.Process(os.getpid()).children(recursive=True)
-        assert len(children) == 1
-        for child in children:
-            child.kill()
+    client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
+    client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
+    client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
+    client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
+    line = client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
+    assert line.startswith(b'done (job:'), line
+
+    # wait for process list to settle (eg: there might be one or two extra processes that will exit because the lock
+    # is already acquired - see StampedeStub)
+    start = time.time()
+    while psutil.Process(os.getpid()).children(recursive=True) > 1 and time.time() - start < 1:
+        try:
+            pid, _ = os.waitpid(0, os.WNOHANG)
+        except OSError:
+            break
+        else:
+            if not pid:
+                break
+
+    children = psutil.Process(os.getpid()).children(recursive=True)
+    assert len(children) == 1
+    for child in children:
+        child.kill()
 
     captured = capfd.readouterr()
-    assert '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()) in captured.err
-    assert 'JOB foobar EXECUTED' in captured.err
-    assert 'completed. Passing back results to' in captured.err
-    assert 'Queues => 0 workspaces' in captured.err
+    print('##############\n%s\n##############' % captured.err)
+    if setup_request_and_spawn != 'running':
+        assert '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()) in captured.err
+        assert 'JOB foobar EXECUTED' in captured.err
+        assert 'completed. Passing back results to' in captured.err
+        assert 'Queues => 0 workspaces' in captured.err
 
 
 def test_simple():

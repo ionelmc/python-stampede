@@ -66,6 +66,7 @@ setup(
     ],
     install_requires=[
         'signalfd',
+        'subprocess32',
     ],
     extras_require={
         # eg:
