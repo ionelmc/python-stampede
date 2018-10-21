@@ -39,7 +39,7 @@ def test_request():
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             line = client.request(helper.PATH, b"foobar")
-            assert line.startswith(b'done (job:'), line
+            assert line.startswith(b'done (task:'), line
             wait_for_strings(proc.read, TIMEOUT,
                              '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                              'JOB foobar EXECUTED',
@@ -74,7 +74,7 @@ def setup_request_and_spawn(request):
 
 def test_request_and_spawn(capfd, setup_request_and_spawn):
     line = client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
-    assert line.startswith(b'done (job:'), line
+    assert line.startswith(b'done (task:'), line
 
     captured = capfd.readouterr()
     print('**************\n%s\n**************' % captured.err)
@@ -90,7 +90,7 @@ def test_request_and_spawn(capfd, setup_request_and_spawn):
     client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
     client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar", wait=False)
     line = client.request_and_spawn([sys.executable, helper.__file__, 'test_simple'], helper.PATH, b"foobar")
-    assert line.startswith(b'done (job:'), line
+    assert line.startswith(b'done (task:'), line
 
     # wait for process list to settle (eg: there might be one or two extra processes that will exit because the lock
     # is already acquired - see StampedeStub)
@@ -126,7 +126,7 @@ def test_simple():
                 fh.write(b"first")
                 fh.write(b"-second\n")
                 line = fh.readline()
-                assert line.startswith(b'done (job:'), line
+                assert line.startswith(b'done (task:'), line
                 wait_for_strings(proc.read, TIMEOUT,
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                                  'JOB first-second EXECUTED',
@@ -142,10 +142,10 @@ def test_fail():
                 fh.write(b"first")
                 fh.write(b"-second\n")
                 line = fh.readline()
-                assert line.startswith(b'done (job:'), line
+                assert line.startswith(b'done (task:'), line
                 wait_for_strings(proc.read, TIMEOUT,
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
-                                 'Failed job',
+                                 'Failed task',
                                  'Exception: FAIL',
                                  'Queues => 0 workspaces')
 
@@ -199,7 +199,7 @@ def test_timeout():
             with connection(3) as fh:
                 fh.write(b"test_timeout\n")
                 line = fh.readline()
-                assert line.startswith(b'fail:14 (job:'), line
+                assert line.startswith(b'fail:14 (task:'), line
                 wait_for_strings(proc.read, TIMEOUT,
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                                  'test_timeout STARTED',

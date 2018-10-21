@@ -70,7 +70,7 @@ class StampedeStub(object):
 class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
     queues = {}
     clients = {}
-    jobs = {}
+    tasks = {}
     alarm_time = 5 * 60  # abort in 5 minutes if no progress
     socket_backlog = 5
 
@@ -88,7 +88,7 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
             if pid:
                 workspace.active = workspace.queue
                 workspace.queue = []
-                self.jobs[pid] = workspace
+                self.tasks[pid] = workspace
                 logger.info("Started task %r for %s", pid, workspace)
             else:
                 logger.info("Running task %r key=%s", os.getpid(), workspace.key)
@@ -107,14 +107,14 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
 
     def handle_signal(self, child_signals):
         for pid, exit_code in collect_sigchld(child_signals).items():
-            workspace = self.jobs.pop(pid)
-            logger.info("Job %r completed. Passing back results to [%s]", pid, workspace.formatted_active)
+            workspace = self.tasks.pop(pid)
+            logger.info("Task %r completed. Passing back results to [%s]", pid, workspace.formatted_active)
             while workspace.active:
                 fd, conn, client_id = workspace.active.pop()
                 with closing(fd):
                     try:
                         with closing(conn):
-                            conn.write(("%s (job: %d)\n" % (
+                            conn.write(("%s (task: %d)\n" % (
                                 "done" if exit_code == 0
                                 else "fail:%d" % exit_code,
                                 pid
