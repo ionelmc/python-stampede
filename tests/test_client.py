@@ -117,6 +117,14 @@ def request_and_spawn(request, setup_request_and_spawn):
     yield request_and_spawn_wrapper
 
 
+def get_children():
+    return [
+        proc
+        for proc in psutil.Process(os.getpid()).children(recursive=True)
+        if proc.is_running()
+    ]
+
+
 def test_request_and_spawn(capfd, request_and_spawn):
     request_and_spawn()
 
@@ -137,7 +145,7 @@ def test_request_and_spawn(capfd, request_and_spawn):
     # wait for process list to settle (eg: there might be one or two extra processes that will exit because the lock
     # is already acquired - see StampedeStub)
     start = time.time()
-    while len(psutil.Process(os.getpid()).children(recursive=True)) > 1 and time.time() - start < TIMEOUT:
+    while len(get_children()) > 1 and time.time() - start < TIMEOUT:
         try:
             pid, _ = os.waitpid(0, os.WNOHANG)
         except OSError:
@@ -146,7 +154,7 @@ def test_request_and_spawn(capfd, request_and_spawn):
             if not pid:
                 break
 
-    children = psutil.Process(os.getpid()).children(recursive=True)
+    children = get_children()
     assert len(children) == 1
     for child in children:
         child.kill()
