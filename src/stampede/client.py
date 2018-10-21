@@ -48,7 +48,7 @@ def request(path, key, wait=True):
             if not wait:
                 return
             line = fh.readline()
-            logger.debug("request key=%r - got response %r", key, line)
+            logger.debug("request key=%r - got response %s", key, line)
             result = json.loads(line.decode('ascii'))
             if result["exit_code"]:
                 raise TaskFailed(**result)
