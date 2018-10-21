@@ -113,7 +113,7 @@ def test_timeout():
             with connection(3) as fh:
                 fh.write(b"test_timeout\n")
                 line = fh.readline()
-                json.loads(line)["exit_code"] == 14
+                json.loads(line.decode('ascii'))["exit_code"] == 14
                 wait_for_strings(proc.read, TIMEOUT,
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
                                  'test_timeout STARTED',
