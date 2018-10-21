@@ -1,5 +1,7 @@
+import json
 import os
 import socket
+from collections import namedtuple
 from contextlib import closing
 from logging import getLogger
 from os.path import exists
@@ -15,10 +17,24 @@ from .utils import IS_PY2
 logger = getLogger(__name__)
 
 
+class TaskFailed(Exception):
+    def __init__(self, exit_code, pid):
+        self.exit_code = exit_code
+        self.pid = pid
+
+    def __str__(self):
+        return "Task failed with exit_code: %s (pid: %s)" % (self.exit_code, self.pid)
+
+
+TaskSuccess = namedtuple("TaskSuccess", ["exit_code", "pid"])
+
+
 def request(path, key, wait=True):
     logger.info("request %r wait=%s", key, wait)
+    if not isinstance(key, bytes):
+        raise TypeError("key should be bytes, not %s!" % type(key).__name__)
     if b"\n" in key or b"\r" in key:
-        raise RuntimeError("Request key must not have line endings!")
+        raise ValueError("key must not have line endings!")
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         with closing(sock):
@@ -32,8 +48,12 @@ def request(path, key, wait=True):
             if not wait:
                 return
             line = fh.readline()
-            if not line.startswith(b"done"):
-                raise RuntimeError("Request failed: %r. Check the logs!" % line)
+            logger.debug("request key=%r - got response %r", key, line)
+            result = json.loads(line)
+            if result["exit_code"]:
+                raise TaskFailed(**result)
+            else:
+                return TaskSuccess(**result)
             logger.info("request key=%r - DONE", key)
             return line
     except Exception:

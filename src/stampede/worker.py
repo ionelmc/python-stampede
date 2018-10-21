@@ -1,4 +1,5 @@
-﻿import os
+﻿import json
+import os
 import pwd
 import select
 import signal
@@ -92,15 +93,21 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 logger.info("Started task %r for %s", pid, workspace)
             else:
                 logger.info("Running task %r key=%s", os.getpid(), workspace.key)
+                exit_code = 255
                 try:
-                    self.notify_progress()
-                    self.handle_task(workspace.key)
-                    logger.info("Completed task %r key=%s", os.getpid(), workspace.key)
-                except Exception:
-                    logger.exception("Failed task %r key=%s", os.getpid(), workspace.key)
+                    try:
+                        self.notify_progress()
+                        self.handle_task(workspace.key)
+                        logger.info("Completed task %r key=%s", os.getpid(), workspace.key)
+                    except Exception:
+                        logger.exception("Failed task %r key=%s", os.getpid(), workspace.key)
+                    except SystemExit as exc:
+                        exit_code = exc.code
+                        logger.exception("Failed task %r key=%s", os.getpid(), workspace.key)
+                    else:
+                        exit_code = 0
                 finally:
-                    close(*self.clients.keys())
-                    os._exit(0)
+                    os._exit(exit_code)
 
     def handle_task(self, key):
         raise NotImplementedError()
@@ -114,11 +121,7 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 with closing(fd):
                     try:
                         with closing(conn):
-                            conn.write(("%s (task: %d)\n" % (
-                                "done" if exit_code == 0
-                                else "fail:%d" % exit_code,
-                                pid
-                            )).encode("ascii"))
+                            conn.write(json.dumps({"exit_code": exit_code, "pid": pid}).encode('ascii'))
                         fd.shutdown(socket.SHUT_RDWR)
                     except EnvironmentError as exc:
                         logger.error("Failed to send response to %s: %s", client_id, exc)
@@ -185,4 +188,3 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 finally:
                     for fd, (fh, _) in self.clients.items():
                         close(fh, fd)
-
