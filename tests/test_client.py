@@ -149,8 +149,6 @@ def test_request_and_spawn(capfd, request_and_spawn):
     while len(get_children()) > 1 and time.time() - start < TIMEOUT:
         time.sleep(0.1)
 
-
-
     children = get_children()
     assert len(children) == 1
     for child in children:
