@@ -20,19 +20,21 @@ class MockedStampedeWorker(StampedeWorker):
 
     def handle_task(self, workspace_name):
         entrypoint = sys.argv[1]
-        if entrypoint == 'test_simple':
+        if entrypoint == 'simple':
             logging.critical('JOB %s EXECUTED', workspace_name.decode('ascii'))
-        elif entrypoint == 'test_fail':
+        elif entrypoint == 'fail':
             raise Exception('FAIL')
-        elif entrypoint == 'test_queue_collapse':
-            assert workspace_name == b'test_queue_collapse'
+        elif entrypoint == 'queue_collapse':
+            assert workspace_name == b'queue_collapse'
             time.sleep(0.35)
-            logging.critical('test_queue_collapse OK')
-        elif entrypoint == 'test_timeout':
-            logging.critical('test_timeout STARTED')
+            logging.critical('queue_collapse OK')
+        elif entrypoint == 'timeout':
+            logging.critical('timeout STARTED')
             time.sleep(2)
-            logging.critical('test_timeout FAIL')
-        elif entrypoint == 'test_bad_client':
+            logging.critical('timeout FAIL')
+        elif entrypoint == 'custom_exit_code':
+            raise SystemExit(123)
+        elif entrypoint == 'bad_client':
             logging.critical('JOB %s EXECUTED', workspace_name)
             time.sleep(0.1)
         else:

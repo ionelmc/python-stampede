@@ -33,7 +33,7 @@ def connection(timeout=1):
 
 
 def test_simple():
-    with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'simple') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             with connection() as fh:
@@ -49,7 +49,7 @@ def test_simple():
 
 
 def test_fail():
-    with TestProcess(sys.executable, helper.__file__, 'test_fail') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'fail') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             with connection() as fh:
@@ -65,7 +65,7 @@ def test_fail():
 
 
 def test_incomplete_request():
-    with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'simple') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             with connection(2) as fh:
@@ -78,7 +78,7 @@ def test_incomplete_request():
 
 
 def test_queue_collapse():
-    with TestProcess(sys.executable, helper.__file__, 'test_queue_collapse') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'queue_collapse') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             clients = []
@@ -90,7 +90,7 @@ def test_queue_collapse():
                     fh = sock.makefile("rwb", buffering=0)
                 else:
                     fh = sock.makefile(bufsize=0)
-                fh.write(b"test_queue_collapse\n")
+                fh.write(b"queue_collapse\n")
                 clients.append((fh, sock))
             try:
                 t1 = time.time()
@@ -100,29 +100,39 @@ def test_queue_collapse():
                 if delta > TIMEOUT:
                     raise AssertionError('Jobs took too much time (%0.2f sec)' % delta)
                 wait_for_strings(proc.read, TIMEOUT,
-                                 'test_queue_collapse OK',
+                                 'queue_collapse OK',
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()))
             finally:
                 [(fh.close(), sock.close()) for fh, sock in clients]
 
 
 def test_timeout():
-    with TestProcess(sys.executable, helper.__file__, 'test_timeout') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'timeout') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             with connection(3) as fh:
-                fh.write(b"test_timeout\n")
+                fh.write(b"foobar\n")
                 line = fh.readline()
                 json.loads(line.decode('ascii'))["exit_code"] == 14
                 wait_for_strings(proc.read, TIMEOUT,
                                  '%s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()),
-                                 'test_timeout STARTED',
+                                 'timeout STARTED',
                                  'completed. Passing back results to')
-                assert 'test_timeout FAIL' not in proc.read()
+                assert 'timeout FAIL' not in proc.read()
+
+
+def test_custom_exit_code():
+    with TestProcess(sys.executable, helper.__file__, 'custom_exit_code') as proc:
+        with dump_on_error(proc.read):
+            wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
+            with connection(3) as fh:
+                fh.write(b"asdf\n")
+                line = fh.readline()
+                json.loads(line.decode('ascii'))["exit_code"] == 123
 
 
 def test_bad_client():
-    with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'simple') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -146,7 +156,7 @@ def test_bad_client():
 
 
 def test_empty_request():
-    with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'simple') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

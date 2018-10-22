@@ -38,7 +38,7 @@ def connection(timeout=1):
 
 
 def test_prespawned():
-    with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
+    with TestProcess(sys.executable, helper.__file__, 'simple') as proc:
         with dump_on_error(proc.read):
             wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
             response = client.request(helper.PATH, b"foobar")
@@ -88,7 +88,7 @@ def setup_request_and_spawn(request):
 @pytest.fixture(params=[True, False], ids=['fail', 'success'])
 def request_and_spawn(request, setup_request_and_spawn):
     if request.param:
-        entrypoint = 'test_fail'
+        entrypoint = 'fail'
 
         def request_and_spawn_wrapper(wait=True):
             if wait:
@@ -100,7 +100,7 @@ def request_and_spawn(request, setup_request_and_spawn):
                 client.request_and_spawn([sys.executable, helper.__file__, entrypoint], helper.PATH, b"foobar",
                                          wait=False)
     else:
-        entrypoint = 'test_simple'
+        entrypoint = 'simple'
 
         def request_and_spawn_wrapper(wait=True):
             if wait:
