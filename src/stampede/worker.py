@@ -82,8 +82,6 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
         signal.alarm(self.alarm_time)
 
     def process_workspace(self, workspace):
-        if not workspace.key:
-            return
         if not workspace.active and workspace.queue:
             pid = os.fork()
             if pid:
@@ -133,6 +131,12 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
         conn, client_id = self.clients.pop(fd)
         try:
             key = conn.readline().strip()
+            if not key:
+                # this is meant to support basic connect health checks
+                # (avoid having log garbage for healthcheck requests)
+                logger.info("Got empty request from client %s", client_id)
+                close(conn, fd)
+                return
             if key in self.queues:
                 workspace = self.queues[key]
             else:

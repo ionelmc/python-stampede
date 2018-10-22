@@ -145,6 +145,27 @@ def test_bad_client():
                              'Failed to send response to ')
 
 
+def test_empty_request():
+    with TestProcess(sys.executable, helper.__file__, 'test_simple') as proc:
+        with dump_on_error(proc.read):
+            wait_for_strings(proc.read, TIMEOUT, 'Queues =>')
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            sock.connect(UDS_PATH)
+            if PY3:
+                fh = sock.makefile("rwb", buffering=0)
+            else:
+                fh = sock.makefile(bufsize=0)
+
+            fh.write(b"\n")
+            fh.close()
+            sock.close()
+            time.sleep(0.2)
+            assert proc.is_alive
+            wait_for_strings(proc.read, TIMEOUT,
+                             'Got empty request from client %s:%s' % (pwd.getpwuid(os.getuid())[0], os.getpid()))
+
+
 def test_double_instance():
     from stampede import StampedeWorker
     StampedeWorker(helper.PATH)
