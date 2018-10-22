@@ -32,7 +32,7 @@ class Workspace(object):
 
     @property
     def formatted_active(self):
-        return ", ".join(i for _, _, i in self.active)
+        return ", ".join(i for _, _, i in self.active) if self.active else "dead"
 
     @property
     def formatted_queue(self):
