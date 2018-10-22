@@ -11,6 +11,7 @@ import pytest
 from process_tests import TestProcess
 from process_tests import dump_on_error
 from process_tests import wait_for_strings
+from psutil import STATUS_ZOMBIE
 from subprocess32 import DEVNULL
 from subprocess32 import Popen
 
@@ -121,7 +122,7 @@ def get_children():
     return [
         proc
         for proc in psutil.Process(os.getpid()).children(recursive=True)
-        if proc.is_running()
+        if proc.is_running() and proc.status() != STATUS_ZOMBIE
     ]
 
 
@@ -146,13 +147,9 @@ def test_request_and_spawn(capfd, request_and_spawn):
     # is already acquired - see StampedeStub)
     start = time.time()
     while len(get_children()) > 1 and time.time() - start < TIMEOUT:
-        try:
-            pid, _ = os.waitpid(0, os.WNOHANG)
-        except OSError:
-            break
-        else:
-            if not pid:
-                break
+        time.sleep(0.1)
+
+
 
     children = get_children()
     assert len(children) == 1
