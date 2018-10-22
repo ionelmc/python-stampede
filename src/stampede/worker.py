@@ -23,26 +23,17 @@ SO_PEERCRED = 17
 class Workspace(object):
     def __init__(self, key):
         self.key = key
-        self.queue = []
-        self.active = None
+        self.clients = []
+        self.started = False
 
     @property
-    def is_dead(self):
-        return not self.queue and not self.active
-
-    @property
-    def formatted_active(self):
-        return ", ".join(i for _, _, i in self.active) if self.active else "dead"
-
-    @property
-    def formatted_queue(self):
-        return ", ".join(i for _, _, i in self.queue)
+    def formatted_clients(self):
+        return ", ".join(i for _, _, i in self.clients)
 
     def __str__(self):
-        return "Workspace(%s, active=[%s], queue=[%s])" % (
+        return "Workspace(%s, clients=[%s])" % (
             self.key,
-            self.formatted_active,
-            self.formatted_queue,
+            self.formatted_clients,
         )
 
     __repr__ = __str__
@@ -82,11 +73,10 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
         signal.alarm(self.alarm_time)
 
     def process_workspace(self, workspace):
-        if not workspace.active and workspace.queue:
+        if not workspace.started:
+            workspace.started = True
             pid = os.fork()
             if pid:
-                workspace.active = workspace.queue
-                workspace.queue = []
                 self.tasks[pid] = workspace
                 logger.info("Started task %r for %s", pid, workspace)
             else:
@@ -113,19 +103,17 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
     def handle_signal(self, child_signals):
         for pid, exit_code in collect_sigchld(child_signals).items():
             workspace = self.tasks.pop(pid)
-            logger.info("Task %r completed. Passing back results to [%s]", pid, workspace.formatted_active)
-            while workspace.active:
-                fd, conn, client_id = workspace.active.pop()
-                with closing(fd):
-                    try:
+            self.queues.pop(workspace.key)
+            logger.info("Task %r completed. Passing back results to [%s]", pid, workspace.formatted_clients)
+            while workspace.clients:
+                fd, conn, client_id = workspace.clients.pop()
+                try:
+                    with closing(fd):
                         with closing(conn):
                             conn.write(json.dumps({"exit_code": exit_code, "pid": pid}).encode('ascii'))
                         fd.shutdown(socket.SHUT_RDWR)
-                    except EnvironmentError as exc:
-                        logger.error("Failed to send response to %s: %s", client_id, exc)
-            self.process_workspace(workspace)
-            if workspace.is_dead:
-                self.queues.pop(workspace.key)
+                except Exception as exc:
+                    logger.error("Failed to send response to %s: %s", client_id, exc)
 
     def handle_request(self, fd):
         conn, client_id = self.clients.pop(fd)
@@ -141,7 +129,7 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 workspace = self.queues[key]
             else:
                 workspace = self.queues.setdefault(key, Workspace(key))
-            workspace.queue.append((fd, conn, client_id))
+            workspace.clients.append((fd, conn, client_id))
             self.process_workspace(workspace)
         except Exception:
             logger.exception("Failed to read request from client %s", client_id)
