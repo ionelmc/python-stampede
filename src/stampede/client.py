@@ -54,8 +54,6 @@ def request(path, key, wait=True):
                 raise TaskFailed(**result)
             else:
                 return TaskSuccess(**result)
-            logger.info("request key=%r - DONE", key)
-            return line
     except Exception:
         logger.exception("request key=%r wait=%s - FAILED:", key, wait)
         raise
