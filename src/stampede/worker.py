@@ -42,13 +42,13 @@ class Workspace(object):
 class SingleInstanceMeta(type):
     __inst = None
 
-    def __call__(cls, path):
+    def __call__(cls, path, *args, **kwargs):
         if cls.__inst is not None:
             raise RuntimeError("Only 1 instance allowed!")
 
         lock = FileLock(path)
         if lock.acquire():
-            inst = cls.__inst = super(SingleInstanceMeta, cls).__call__(path)
+            inst = cls.__inst = super(SingleInstanceMeta, cls).__call__(path, *args, **kwargs)
             return inst
         else:
             return StampedeStub()
