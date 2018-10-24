@@ -66,7 +66,7 @@ def setup_request_and_spawn(request):
         elif request.param == 'running':
             Popen([sys.executable, helper.__file__, helper_entrypoint], stdin=DEVNULL, close_fds=True)
             t = time.time()
-            while not os.path.exists(UDS_PATH) and time() - t < 1:
+            while not os.path.exists(UDS_PATH) and time() - t < 5:
                 time.sleep(0.01)
         elif request.param == 'dead':
             if os.path.exists(UDS_PATH):
