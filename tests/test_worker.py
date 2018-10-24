@@ -178,7 +178,7 @@ def test_empty_request():
 
 def test_double_instance():
     from stampede import StampedeWorker
-    StampedeWorker.__SingleInstanceMeta_inst = None
+    StampedeWorker._SingleInstanceMeta__inst = None
     StampedeWorker(helper.PATH)
     with pytest.raises(RuntimeError):
         StampedeWorker(helper.PATH)
@@ -192,6 +192,6 @@ def test_subclassing():
             super(MyWorker, self).__init__(path)
             self.config = config
 
-    MyWorker.__SingleInstanceMeta_inst = None
+    MyWorker._SingleInstanceMeta__inst = None
     worker = MyWorker(helper.PATH, 'foobar')
     assert worker.config == 'foobar'
