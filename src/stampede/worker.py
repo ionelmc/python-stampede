@@ -153,8 +153,10 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
                 logger.info("Binding to %r", self.socket_path)
                 if os.path.exists(self.socket_path):
                     os.unlink(self.socket_path)
-                requests_sock.bind(self.socket_path)
+                pending_socket_path = "%s-pending" % self.socket_path
+                requests_sock.bind(pending_socket_path)
                 requests_sock.listen(self.socket_backlog)
+                os.rename(pending_socket_path, self.socket_path)
                 try:
                     while 1:
                         qlen = len(self.queues)
