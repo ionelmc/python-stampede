@@ -102,6 +102,9 @@ class StampedeWorker(SingleInstanceMeta("StampedeWorkerBase", (object,), {})):
 
     def handle_signal(self, child_signals):
         for pid, exit_code in collect_sigchld(child_signals).items():
+            if pid not in self.tasks:
+                logger.warn("Got SIGCHLD for unknown pid: %s", pid)
+                continue
             workspace = self.tasks.pop(pid)
             self.queues.pop(workspace.key)
             logger.info("Task %r completed. Passing back results to [%s]", pid, workspace.formatted_clients)
