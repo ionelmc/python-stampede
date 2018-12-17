@@ -2,12 +2,16 @@
 Changelog
 =========
 
-
-1.1.0 (2016-06-24)
+2.0.0 (2018-12-17)
 ------------------
 
 * Use more robust collection of child exit codes. Turns out that if there's enough pressure of the signalfd is fills up and
   needs extra ``os.waitpid()`` calls to collect the orphans.
+* Add a request API (``stampede.request``).
+* Add a request API that also spawns the daemon if not running (``stampede.request_and_spawn``).
+* Changed ``do_work`` to ``handle_task`` in StampedeWorker. **BACKWARDS INCOMPATIBLE**
+* Update test grid to include Python 3.7 and PyPy3.
+* Changed how results are passed to the client (JSON instead of some crappy custom text format).
 
 1.0.0 (2015-10-19)
 ------------------
