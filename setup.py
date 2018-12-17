@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='stampede',
-    version='1.0.0',
+    version='2.0.0',
     license='BSD 2-Clause License',
     description="A really simple job queue. Uses a rudimentary event loop and runs tasks "
                 "in subprocesses (managed with signalfd). Doesn't support task arguments."
